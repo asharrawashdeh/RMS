@@ -41,4 +41,11 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function scopeSupplier($query)
+    {
+        $query->whereIn('email', [
+            'supplier@rms.com',
+        ]);
+    }
 }

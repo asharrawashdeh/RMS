@@ -115,6 +115,60 @@ class OrderControllerTest extends TestCase
     /**
      * @test
      */
+    public function removes_out_some_order_items_if_not_sufficient_in_stock()
+    {
+        // ARRANGE
+        $this->withoutExceptionHandling();
+        $ingredient1 = Ingredient::firstOrCreate(['name' => 'Beef']);
+        $ingredient2 = Ingredient::firstOrCreate(['name' => 'Cheese']);
+        $ingredient3 = Ingredient::firstOrCreate(['name' => 'Onion']);
+        $ingredient4 = Ingredient::updateOrCreate(['name' => 'X']);
+        $ingredient5 = Ingredient::updateOrCreate(['name' => 'Y']);
+
+        Stock::updateOrCreate(['ingredient_id' => $ingredient4->id], [
+            'start_amount' => 1,
+            'left_amount' => 1
+        ]);
+        Stock::updateOrCreate(['ingredient_id' => $ingredient5->id], [
+            'start_amount' => 1,
+            'left_amount' => 1
+        ]);
+        $product1 = Product::factory()->create(['name' => 'Burger']);
+        $product1->ingredients()->attach($ingredient1, ['amount' => 150]);
+        $product1->ingredients()->attach($ingredient2, ['amount' => 30]);
+        $product1->ingredients()->attach($ingredient3, ['amount' => 20]);
+
+        $product2 = Product::factory()->create(['name' => 'Pizza']);
+        $product2->ingredients()->attach($ingredient4, ['amount' => 10]);
+        $product2->ingredients()->attach($ingredient5, ['amount' => 15]);
+
+        $this->assertEquals(Stock::where('ingredient_id', $ingredient1->id)->get()->first()->left_amount, 20);
+        $this->assertEquals(Stock::where('ingredient_id', $ingredient2->id)->get()->first()->left_amount, 5);
+        $this->assertEquals(Stock::where('ingredient_id', $ingredient3->id)->get()->first()->left_amount, 1);
+
+        // ACT
+        $this->json('post', route('orders.store'), [
+            'products' => [
+                [
+                    'product_id' => $product1->id,
+                    'quantity' => 200,
+                ],
+                [
+                    'product_id' => $product2->id,
+                    'quantity' => 2,
+                ],
+            ],
+        ])->assertOk();
+
+        // ASSERT
+        $this->assertEquals(Stock::where('ingredient_id', $ingredient1->id)->get()->first()->left_amount, 20);
+        $this->assertEquals(Stock::where('ingredient_id', $ingredient2->id)->get()->first()->left_amount, 5);
+        $this->assertEquals(Stock::where('ingredient_id', $ingredient3->id)->get()->first()->left_amount, 1);
+        $this->assertEquals(1, Order::first()->products->count());
+    }
+    /**
+     * @test
+     */
     public function notify_merchant_when_stock_level_is_low()
     {
         // ARRANGE

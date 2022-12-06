@@ -25,15 +25,23 @@ class OrderProduct extends Pivot
     }
     public function updateStock()
     {
-        $grossAmountPerIngredient = $this->product->grossAmountPerIngredient($this->quantity);
+        // go through this product ingredients and set must_notify and left_amount temporary
+        $updatedStocks = Stock::whereIn('ingredient_id', $this->product->ingredients->pluck('id'))
+            ->get()->map(function ($stock) {
+                $grossAmount = $this->product->ingredients()->where('ingredients.id', $stock->ingredient_id)->get()->first()->pivot->amount * $this->quantity;
+                $leftAmount = $stock->left_amount - $grossAmount / 1000;
 
-        $ingredientIds = $grossAmountPerIngredient->keys()->unique()->toArray();
-        Stock::whereIn('ingredient_id', $ingredientIds)->each(function ($stock) use ($grossAmountPerIngredient) {
-            $leftAmount = $stock->left_amount - data_get($grossAmountPerIngredient, $stock->ingredient_id) / 1000;
-            $stock->update([
-                'left_amount' => $leftAmount < 0 ? 0 : $leftAmount,
-                'must_notify' => $stock->mustNotify($leftAmount)
-            ]);
-        });
+                if ($leftAmount >= 0) {
+                    $stock->must_notify = $stock->mustNotify($leftAmount);
+                    $stock->left_amount = $leftAmount;
+                    return $stock;
+                }
+            })->filter();
+        // if at least one ingredient was not sufficient from the above calculation, detach the whole product from the order.
+        if ($updatedStocks->count() != $this->product->ingredients->count()) {
+            $this->delete();
+            return;
+        }
+        $updatedStocks->each(fn ($stock) => $stock->save());
     }
 }

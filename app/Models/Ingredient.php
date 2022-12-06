@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Ingredient extends Model
 {
     use HasFactory;
+    public $guarded = [];
     public function product(){
         return $this->belongsToMany(Product::class)->withPivot('amount')->withTimestamps();
     }

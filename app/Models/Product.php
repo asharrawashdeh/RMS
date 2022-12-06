@@ -17,8 +17,4 @@ class Product extends Model
     {
         return $this->belongsToMany(Order::class)->using(OrderProduct::class)->withPivot('quantity');
     }
-    public function grossAmountPerIngredient($quantity)
-    {
-        return $this->ingredients->pluck('pivot.amount', 'id')->map(fn ($amount) => $amount * $quantity);
-    }
 }

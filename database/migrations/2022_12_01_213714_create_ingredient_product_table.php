@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('product_id')->constrained('products');
             $table->foreignId('ingredient_id')->constrained('ingredients');
-            $table->string('amount');
+            $table->unsignedDecimal('amount');
             $table->timestamps();
         });
     }

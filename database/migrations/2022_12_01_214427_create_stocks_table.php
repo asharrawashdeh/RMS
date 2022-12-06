@@ -16,8 +16,8 @@ return new class extends Migration
         Schema::create('stocks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('ingredient_id')->constrained('ingredients');
-            $table->string('start_amount');
-            $table->string('left_amount');
+            $table->unsignedDecimal('start_amount');
+            $table->unsignedDecimal('left_amount');
             $table->boolean('must_notify')->default(0);
             $table->timestamps();
         });
